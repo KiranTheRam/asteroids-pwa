@@ -1,0 +1,233 @@
+:root {
+  --bg: #0a0a0a;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background: var(--bg);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+#game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+:root {
+  --fg: #f4f4f5;
+  --dim: #5a5a5e;
+  --accent: #22d3ee;
+}
+
+.hidden { display: none !important; }
+
+/* gear button — visible only when not actively playing (body.playing hides it) */
+#gear {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 14px);
+  right: calc(env(safe-area-inset-right) + 14px);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  background: rgba(20, 20, 22, 0.6);
+  border: 1px solid #2a2a2e;
+  border-radius: 12px;
+  opacity: 0.75;
+  z-index: 20;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#gear:active { opacity: 1; transform: scale(0.94); }
+body.playing #gear { display: none; }
+
+/* settings overlay */
+#settings {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: rgba(8, 8, 8, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#settings .panel {
+  width: min(440px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 22px 22px 18px;
+  background: #0d0d0f;
+  border: 1px solid #26262b;
+  border-radius: 18px;
+  color: var(--fg);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  box-shadow: 0 0 40px rgba(34, 211, 238, 0.08);
+}
+
+#settings h1 {
+  font-size: 20px;
+  letter-spacing: 0.18em;
+  font-weight: 700;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
+#settings h2.section {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid #26262b;
+}
+/* the row right after a section header doesn't need its own divider */
+#settings h2.section + .row { border-top: none; }
+/* sub-effect rows sit slightly indented under the master Sound toggle */
+#settings .row.snd .lbl { padding-left: 14px; color: #cfcfd4; }
+
+/* arcade sub-group label (Enemies / Power-ups / Modifiers) */
+#settings .subgroup {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 10px 0 -2px;
+  padding-left: 2px;
+}
+#settings .row.arc .lbl { padding-left: 14px; color: #cfcfd4; }
+#settings .lbl .hint { color: var(--dim); font-size: 11px; font-weight: 600; }
+
+#settings .row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 13px 0;
+  border-top: 1px solid #1c1c20;
+}
+#settings .row .lbl { font-size: 14px; }
+#settings .row input[type="range"] { grid-column: 1 / -1; }
+#settings .row .val {
+  font-size: 13px;
+  color: var(--accent);
+  min-width: 42px;
+  text-align: right;
+  grid-row: 1;
+  grid-column: 2;
+}
+
+/* range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: #2a2a30;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.6);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+/* toggle switches */
+#settings .row.toggle { grid-template-columns: 1fr auto; }
+#settings .row.toggle input[type="checkbox"] { display: none; }
+#settings .switch {
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: #2a2a30;
+  position: relative;
+  transition: background 0.15s;
+}
+#settings .switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: transform 0.15s, background 0.15s;
+}
+#settings input[type="checkbox"]:checked + .switch { background: rgba(34, 211, 238, 0.35); }
+#settings input[type="checkbox"]:checked + .switch::after {
+  transform: translateX(20px);
+  background: var(--accent);
+}
+
+#settings .btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+#settings .btns button {
+  flex: 1;
+  padding: 13px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+#settings .ghost {
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid #2a2a30;
+}
+#settings .primary {
+  background: var(--accent);
+  color: #04181c;
+  border: none;
+}
+#settings .primary:active, #settings .ghost:active { transform: scale(0.97); }

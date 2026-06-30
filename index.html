@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Asteroids" />
+  <title>ASTEROIDS</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <button id="gear" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div id="settings" class="hidden" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="panel">
+      <h1>SETTINGS</h1>
+
+      <label class="row">
+        <span class="lbl">Thruster sensitivity</span>
+        <input type="range" id="set-thruster" min="0.5" max="2" step="0.05" />
+        <output id="out-thruster" class="val"></output>
+      </label>
+
+      <label class="row">
+        <span class="lbl">Turn responsiveness</span>
+        <input type="range" id="set-turn" min="0.5" max="2" step="0.05" />
+        <output id="out-turn" class="val"></output>
+      </label>
+
+      <label class="row">
+        <span class="lbl">Field of view (zoom)</span>
+        <input type="range" id="set-fov" min="0.8" max="2" step="0.05" />
+        <output id="out-fov" class="val"></output>
+      </label>
+
+      <label class="row">
+        <span class="lbl">Screen shake</span>
+        <input type="range" id="set-shake" min="0" max="1.5" step="0.05" />
+        <output id="out-shake" class="val"></output>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Control indicator</span>
+        <input type="checkbox" id="set-indicator" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Swap sides (steer right)</span>
+        <input type="checkbox" id="set-swapsides" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Twin-stick aiming <span class="hint">right pad aims &amp; fires</span></span>
+        <input type="checkbox" id="set-twinstick" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Neon glow</span>
+        <input type="checkbox" id="set-glow" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Haptics</span>
+        <input type="checkbox" id="set-haptics" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle">
+        <span class="lbl">Show FPS</span>
+        <input type="checkbox" id="set-showfps" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <h2 class="section">Mode</h2>
+
+      <label class="row toggle">
+        <span class="lbl">Arcade mode <span class="hint">(off = Classic)</span></span>
+        <input type="checkbox" id="set-arcade" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="subgroup arc">Enemies</div>
+      <label class="row toggle arc">
+        <span class="lbl">Hunter <span class="hint">chases &amp; rams</span></span>
+        <input type="checkbox" id="set-arc-hunter" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Mine <span class="hint">proximity bomb</span></span>
+        <input type="checkbox" id="set-arc-mine" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Sniper <span class="hint">elite, aimed shots</span></span>
+        <input type="checkbox" id="set-arc-sniper" /><span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="subgroup arc">Power-ups</div>
+      <label class="row toggle arc">
+        <span class="lbl">Pierce <span class="hint">shots punch through</span></span>
+        <input type="checkbox" id="set-arc-pierce" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Homing <span class="hint">shots seek targets</span></span>
+        <input type="checkbox" id="set-arc-homing" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Time-slow <span class="hint">bullet time</span></span>
+        <input type="checkbox" id="set-arc-slow" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Bomb <span class="hint">clears the screen</span></span>
+        <input type="checkbox" id="set-arc-bomb" /><span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="subgroup arc">Modifiers</div>
+      <label class="row toggle arc">
+        <span class="lbl">Combo scoring <span class="hint">kill-chain multiplier</span></span>
+        <input type="checkbox" id="set-arc-combo" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Explosive asteroids <span class="hint">chain blasts</span></span>
+        <input type="checkbox" id="set-arc-explosive" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Gravity wells <span class="hint">pull hazard</span></span>
+        <input type="checkbox" id="set-arc-gravity" /><span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <h2 class="section">Sound</h2>
+
+      <label class="row toggle">
+        <span class="lbl">Sound</span>
+        <input type="checkbox" id="set-sound" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">Gunfire</span>
+        <input type="checkbox" id="set-snd-fire" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">Explosions</span>
+        <input type="checkbox" id="set-snd-explode" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">Thrust</span>
+        <input type="checkbox" id="set-snd-thrust" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">UFO</span>
+        <input type="checkbox" id="set-snd-ufo" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">Power-ups</span>
+        <input type="checkbox" id="set-snd-powerup" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="row toggle snd">
+        <span class="lbl">Ship destroyed</span>
+        <input type="checkbox" id="set-snd-death" />
+        <span class="switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="btns">
+        <button id="set-reset" class="ghost">RESET</button>
+        <button id="set-close" class="primary">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <noscript>This game requires JavaScript.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
