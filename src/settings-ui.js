@@ -39,6 +39,10 @@ const TOGGLES = [
   ['arcCombo', 'set-arc-combo'],
   ['arcExplosive', 'set-arc-explosive'],
   ['arcGravity', 'set-arc-gravity'],
+  ['arcAstCrystal',  'set-arc-ast-crystal'],
+  ['arcAstIron',     'set-arc-ast-iron'],
+  ['arcAstIce',      'set-arc-ast-ice'],
+  ['arcAstParasite', 'set-arc-ast-parasite'],
 ];
 
 // Grey out individual effect rows when master Sound is off.

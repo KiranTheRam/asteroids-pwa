@@ -7,6 +7,7 @@ import { glow, noGlow, strokeCircle, strokePoly } from './render.js';
 import { unlock, toggleMute, getMuted } from './audio.js';
 import { settings } from './settings.js';
 import { initSettingsUI, isSettingsOpen } from './settings-ui.js';
+import { initUpgradesUI, isUpgradesOpen, openUpgrades } from './upgrades-ui.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -108,6 +109,7 @@ const muteRect = () => ({ x: layout.center.cx - BTN / 2, y: layout.center.muteY 
 
 let muted = getMuted();
 initSettingsUI({ onSoundChange: (m) => { muted = m; } });
+initUpgradesUI();
 input.addButton(pauseRect, () => {
   if (game.state === STATE.PLAYING || game.state === STATE.PAUSED) game.togglePause();
 });
@@ -160,7 +162,7 @@ function frame(now) {
       if (game.ship) game.fireAngle = game.ship.angle;
     }
     input.consumeMenuTap();
-  } else if (isSettingsOpen()) {
+  } else if (isSettingsOpen() || isUpgradesOpen()) {
     input.consumeFireToggles(); input.consumeMenuTap();
     game.firing = false;
   } else {

@@ -22,6 +22,13 @@ export const COLORS = {
   well: '#a78bfa',      // violet
   combo: '#fde047',     // yellow
   volatile: '#fb923c',  // orange (explosive asteroid marker)
+  // special asteroid types
+  crystal: '#67e8f9',   // cyan
+  iron: '#94a3b8',      // slate
+  ice: '#bae6fd',       // pale blue
+  parasite: '#c4b5fd',  // violet-pink
+  // roguelite
+  mineral: '#4ade80',   // green
 };
 
 // `classic: true` => part of the base game (drops in both modes).
@@ -126,6 +133,13 @@ export const CFG = {
   gravityLife: 9,
   slowFactor: 0.4,      // time-scale for hazards while Time-slow is active
   homingTurn: 4.0,      // rad/s steering of homing bullets
+
+  // ---- special asteroid types ----
+  asteroidTypeChance: 0.35, // chance a large rock gets a special type
+  crystalShardCount: 4,
+  crystalSpeedMult: 2.2,
+  iceShardCount: 6,
+  iceShardScore: 10,
 };
 
 // ---- small math utils ----
@@ -142,3 +156,15 @@ export function angleDelta(a, b) {
   if (d > Math.PI) d -= TAU;
   return d;
 }
+
+// ---- roguelite upgrade definitions ----
+// costs: array of mineral costs per level (length == maxLevel)
+export const UPGRADES = [
+  { key: 'extraLife',        label: 'Extra Life',       hint: '+1 starting life',         costs: [100, 250, 500] },
+  { key: 'bulletSpeed',      label: 'Rapid Reflexes',   hint: '+8% bullet speed',          costs: [80, 200, 400] },
+  { key: 'shipSpeed',        label: 'Afterburner',      hint: '+10% max ship speed',       costs: [80, 200, 400] },
+  { key: 'fireRate',         label: 'Hair Trigger',     hint: '−0.02s fire cooldown',      costs: [100, 250, 500] },
+  { key: 'powerupDuration',  label: 'Extended Effects', hint: '+15% power-up duration',    costs: [120, 300, 600] },
+  { key: 'startShield',      label: 'Armored Entry',    hint: 'Start each life w/ 3s shield', costs: [350] },
+  { key: 'mineralBonus',     label: 'Prospector',       hint: '+20% mineral earnings',     costs: [60, 150, 300] },
+];

@@ -50,3 +50,13 @@ export function setMuted(muted) {
   data.muted = !!muted;
   write(data);
 }
+
+export function getRoguelite() {
+  return read().roguelite || { minerals: 0, upgrades: {} };
+}
+
+export function setRoguelite(obj) {
+  const data = read();
+  data.roguelite = obj;
+  write(data);
+}

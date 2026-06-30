@@ -17,6 +17,11 @@
 <body>
   <canvas id="game"></canvas>
 
+  <button id="upg-open" aria-label="Upgrades" title="Upgrades">
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </svg>
+  </button>
   <button id="gear" aria-label="Settings" title="Settings">
     <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
       <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -143,6 +148,24 @@
         <input type="checkbox" id="set-arc-gravity" /><span class="switch" aria-hidden="true"></span>
       </label>
 
+      <div class="subgroup arc">Asteroid Types</div>
+      <label class="row toggle arc">
+        <span class="lbl">Crystal <span class="hint">splits into fast shards</span></span>
+        <input type="checkbox" id="set-arc-ast-crystal" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Iron <span class="hint">takes two hits</span></span>
+        <input type="checkbox" id="set-arc-ast-iron" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Ice <span class="hint">shatters into tiny shards</span></span>
+        <input type="checkbox" id="set-arc-ast-ice" /><span class="switch" aria-hidden="true"></span>
+      </label>
+      <label class="row toggle arc">
+        <span class="lbl">Parasite <span class="hint">releases a hunter on death</span></span>
+        <input type="checkbox" id="set-arc-ast-parasite" /><span class="switch" aria-hidden="true"></span>
+      </label>
+
       <h2 class="section">Sound</h2>
 
       <label class="row toggle">
@@ -190,6 +213,21 @@
       <div class="btns">
         <button id="set-reset" class="ghost">RESET</button>
         <button id="set-close" class="primary">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="upgrades" class="hidden" role="dialog" aria-modal="true" aria-label="Upgrades">
+    <div class="panel">
+      <h1>UPGRADES</h1>
+      <div id="upg-minerals-row">
+        <span class="upg-minerals-label">Minerals</span>
+        <span id="upg-minerals" class="upg-minerals-count">0</span>
+        <span class="upg-minerals-icon">⬡</span>
+      </div>
+      <div id="upgrade-list"></div>
+      <div class="btns">
+        <button id="upg-close" class="primary">DONE</button>
       </div>
     </div>
   </div>

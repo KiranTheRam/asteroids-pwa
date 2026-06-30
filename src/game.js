@@ -9,7 +9,7 @@ import {
 import { Shake, glow, noGlow } from './render.js';
 import { sfx } from './audio.js';
 import { settings } from './settings.js';
-import { getHighScore, setHighScore } from './storage.js';
+import { getHighScore, setHighScore, getRoguelite, setRoguelite } from './storage.js';
 
 const STATE = { TITLE: 'title', PLAYING: 'playing', PAUSED: 'paused', OVER: 'over' };
 const PU_KEYS = ['rapid', 'spread', 'shield', 'pierce', 'homing', 'slow'];
@@ -36,7 +36,7 @@ export class Game {
     this.particles = [];
     this.powerups = [];
     this.score = 0;
-    this.lives = CFG.startLives;
+    this.lives = CFG.startLives; // overridden below by roguelite extraLife
     this.wave = 0;
     this.fireCd = 0;
     this.pu = { rapid: 0, spread: 0, shield: 0, pierce: 0, homing: 0, slow: 0 };
@@ -70,8 +70,24 @@ export class Game {
       combo: a && settings.arcCombo,
       explosive: a && settings.arcExplosive,
       gravity: a && settings.arcGravity,
+      crystal: a && settings.arcAstCrystal,
+      iron: a && settings.arcAstIron,
+      ice: a && settings.arcAstIce,
+      parasite: a && settings.arcAstParasite,
     };
     this.pool = this._buildPool();
+
+    // Roguelite: load permanent upgrades and bake into session values.
+    const rl = getRoguelite();
+    this.rl = rl;
+    const upg = rl.upgrades || {};
+    this.rlBulletSpeed  = CFG.bulletSpeed  * (1 + (upg.bulletSpeed  || 0) * 0.08);
+    this.rlShipSpeed    = CFG.shipMaxSpeed * (1 + (upg.shipSpeed    || 0) * 0.10);
+    this.rlFireCooldown = CFG.fireCooldown - (upg.fireRate          || 0) * 0.02;
+    this.rlPuMult       = 1 + (upg.powerupDuration || 0) * 0.15;
+    this.lives          = CFG.startLives + (upg.extraLife || 0);
+    this.mineralsEarned = 0; // track what was earned this run
+    this.lastMineralsMsg = '';
   }
 
   // Power-up drop pool: classic three always, arcade extras if enabled.
@@ -93,6 +109,8 @@ export class Game {
 
   _spawnShip() {
     this.ship = new Ship(this.world.w / 2, this.world.h / 2);
+    this.ship.maxSpeed = this.rlShipSpeed;
+    if ((this.rl?.upgrades?.startShield || 0) >= 1) this.pu.shield = 3;
   }
 
   _startWave(n) {
@@ -112,8 +130,24 @@ export class Game {
   _spawnAsteroidEdge() {
     const p = this._edgePos();
     const a = new Asteroid(p.x, p.y, 0);
-    if (this.flags.explosive && Math.random() < CFG.explosiveChance) a.volatile = true;
+    if (this.flags.explosive && Math.random() < CFG.explosiveChance) {
+      a.volatile = true;
+    } else {
+      this._assignAsteroidType(a);
+    }
     this.asteroids.push(a);
+  }
+
+  _assignAsteroidType(a) {
+    if (Math.random() >= CFG.asteroidTypeChance) return;
+    const types = [];
+    if (this.flags.crystal)  types.push('crystal');
+    if (this.flags.iron)     types.push('iron');
+    if (this.flags.ice)      types.push('ice');
+    if (this.flags.parasite) types.push('parasite');
+    if (types.length === 0) return;
+    a.kind = types[Math.floor(Math.random() * types.length)];
+    if (a.kind === 'iron') a.hp = 2;
   }
 
   // ---- tap routing from menus ----
@@ -313,9 +347,9 @@ export class Game {
     const ang = this.fireAngle; // == ship heading in classic, aim stick in twin-stick
     const nx = s.x + Math.cos(ang) * s.radius * 1.3;
     const ny = s.y + Math.sin(ang) * s.radius * 1.3;
-    this.fireCd = this.pu.rapid > 0 ? CFG.rapidCooldown : CFG.fireCooldown;
+    this.fireCd = this.pu.rapid > 0 ? CFG.rapidCooldown : this.rlFireCooldown;
     const angles = this.pu.spread > 0 ? [ang - 0.22, ang, ang + 0.22] : [ang];
-    const opts = { pierce: this.pu.pierce > 0, homing: this.pu.homing > 0 };
+    const opts = { pierce: this.pu.pierce > 0, homing: this.pu.homing > 0, speed: this.rlBulletSpeed };
     for (const a of angles) this.bullets.push(new Bullet(nx, ny, a, opts));
     sfx.fire();
   }
@@ -481,6 +515,16 @@ export class Game {
 
   _destroyAsteroid(a) {
     if (a._dead) return;
+
+    // Iron: absorb first hit, dent visible inner ring
+    if (a.kind === 'iron' && a.hp > 1) {
+      a.hp--;
+      this._burst(a.x, a.y, 6, COLORS.iron, 100);
+      this.shake.add(2);
+      sfx.explode(0.5);
+      return;
+    }
+
     a._dead = true;
     this._award(a.score);
     sfx.explode(1 - a.tier * 0.3);
@@ -494,6 +538,45 @@ export class Game {
         if (!o._dead && Math.hypot(o.x - a.x, o.y - a.y) < CFG.explosiveRadius) {
           this._destroyAsteroid(o);
         }
+      }
+      return;
+    }
+
+    if (a.kind === 'crystal' && a.tier < CFG.astTiers.length - 1) {
+      // Crystal: fast shards instead of normal split
+      this._burst(a.x, a.y, 18, COLORS.crystal, 220, 1.1);
+      this.shake.add(5);
+      for (let i = 0; i < CFG.crystalShardCount; i++) {
+        const shard = new Asteroid(a.x, a.y, a.tier + 1);
+        shard.vx *= CFG.crystalSpeedMult;
+        shard.vy *= CFG.crystalSpeedMult;
+        shard.kind = 'crystal';
+        this.asteroids.push(shard);
+      }
+      return;
+    }
+
+    if (a.kind === 'ice') {
+      // Ice: many tiny low-score shards
+      this._burst(a.x, a.y, 20, COLORS.ice, 180, 0.9);
+      this.shake.add(4);
+      for (let i = 0; i < CFG.iceShardCount; i++) {
+        const shard = new Asteroid(a.x, a.y, 2);
+        shard.score = CFG.iceShardScore;
+        shard.kind = 'ice';
+        this.asteroids.push(shard);
+      }
+      return;
+    }
+
+    if (a.kind === 'parasite') {
+      // Parasite: release a hunter
+      this._burst(a.x, a.y, 14, COLORS.parasite, 180, 1.0);
+      this.shake.add(5);
+      if (this.flags.hunter) this.hunters.push(new Hunter(a.x, a.y));
+      // still do normal split for remaining tiers
+      if (a.tier < CFG.astTiers.length - 1) {
+        for (let i = 0; i < 2; i++) this.asteroids.push(new Asteroid(a.x, a.y, a.tier + 1));
       }
       return;
     }
@@ -515,7 +598,7 @@ export class Game {
     if (def.instant) {
       if (type === 'bomb') this._bomb();
     } else {
-      this.pu[type] = def.duration;
+      this.pu[type] = def.duration * this.rlPuMult;
     }
     this._burst(this.ship.x, this.ship.y, 18, def.color, 180);
     sfx.powerup();
@@ -568,9 +651,21 @@ export class Game {
       this.ship = null;
       this.state = STATE.OVER;
       this.high = setHighScore(this.score);
+      this._awardMinerals();
     } else {
       this._spawnShip();
     }
+  }
+
+  _awardMinerals() {
+    const base = Math.floor(this.score / 100) + this.wave * 20;
+    const bonusMult = 1 + (this.rl?.upgrades?.mineralBonus || 0) * 0.20;
+    const earned = Math.floor(base * bonusMult);
+    this.mineralsEarned = earned;
+    const rl = getRoguelite();
+    rl.minerals = (rl.minerals || 0) + earned;
+    setRoguelite(rl);
+    this.rl = rl;
   }
 
   // ---------------- render ----------------
@@ -711,7 +806,7 @@ export class Game {
         ? 'left pad steers · right pad aims & fires'
         : 'left pad steers · right toggles autofire';
       ctx.fillText(ctrl, cx, cy + 44);
-      ctx.fillText('gear → settings for modes', cx, cy + 66);
+      ctx.fillText('gear → settings  ·  ⬡ UPGRADES for permanent perks', cx, cy + 66);
     } else if (this.state === STATE.OVER) {
       this._title(ctx, cx, cy - big * 0.9, 'GAME OVER', big * 0.8, COLORS.ufo, 12);
       ctx.fillStyle = COLORS.fg;
@@ -721,7 +816,15 @@ export class Game {
       ctx.fillStyle = this.score >= this.high ? COLORS.rapid : COLORS.dim;
       ctx.font = '600 15px ui-monospace, monospace';
       ctx.fillText((this.score >= this.high ? 'NEW BEST · ' : 'BEST ') + this.high, cx, cy + 36);
-      this._pulseHint(ctx, cx, cy + 78, 'TAP TO PLAY AGAIN');
+      if (this.mineralsEarned > 0) {
+        ctx.fillStyle = COLORS.mineral;
+        ctx.font = '600 14px ui-monospace, monospace';
+        ctx.fillText('+' + this.mineralsEarned + ' minerals', cx, cy + 58);
+      }
+      this._pulseHint(ctx, cx, cy + 86, 'TAP TO PLAY AGAIN');
+      ctx.fillStyle = COLORS.dim;
+      ctx.font = '600 13px ui-monospace, monospace';
+      ctx.fillText('⬡ tap UPGRADES to spend minerals', cx, cy + 118);
     } else if (this.state === STATE.PAUSED) {
       this._title(ctx, cx, cy - 20, 'PAUSED', big * 0.7, COLORS.fg, 8);
       this._pulseHint(ctx, cx, cy + 36, 'TAP TO RESUME');

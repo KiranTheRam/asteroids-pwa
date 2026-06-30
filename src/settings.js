@@ -32,6 +32,10 @@ export const DEFAULTS = {
   arcCombo: true,
   arcExplosive: true,
   arcGravity: true,
+  arcAstCrystal: true,
+  arcAstIron: true,
+  arcAstIce: true,
+  arcAstParasite: true,
 };
 
 // numeric ranges enforced on load so a corrupt store can't break the game

@@ -34,11 +34,12 @@ export class Ship {
     // friction
     const f = Math.pow(CFG.shipFriction, dt);
     this.vx *= f; this.vy *= f;
-    // speed cap
+    // speed cap (maxSpeed can be overridden by roguelite upgrade)
+    const maxSp = this.maxSpeed ?? CFG.shipMaxSpeed;
     const sp = Math.hypot(this.vx, this.vy);
-    if (sp > CFG.shipMaxSpeed) {
-      this.vx = (this.vx / sp) * CFG.shipMaxSpeed;
-      this.vy = (this.vy / sp) * CFG.shipMaxSpeed;
+    if (sp > maxSp) {
+      this.vx = (this.vx / sp) * maxSp;
+      this.vy = (this.vy / sp) * maxSp;
     }
     this.x += this.vx * dt;
     this.y += this.vy * dt;
@@ -113,12 +114,16 @@ export class Asteroid {
       this.verts.push({ a, r: rr });
     }
     this.volatile = false; // explosive-asteroid modifier
+    this.kind = 'normal'; // special type: 'crystal' | 'iron' | 'ice' | 'parasite'
+    this.hp = 1;
+    this.t = rand(0, Math.PI * 2); // per-rock clock for animated effects
   }
 
   update(dt, world) {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.rot += this.spin * dt;
+    this.t += dt;
     wrap(this, world.w, world.h, CFG.astWrapPad);
   }
 
@@ -134,9 +139,44 @@ export class Asteroid {
     // No glow here: asteroids are the most numerous object on screen and
     // shadowBlur per-shape is what pushes frame time past the 8.3ms ProMotion
     // needs to stay at 120Hz. They still read as bright white vector rocks.
-    strokePoly(ctx, this.outline(), { color: COLORS.fg, width: 2 });
+    const color = this.kind === 'crystal' ? COLORS.crystal
+                : this.kind === 'iron'    ? COLORS.iron
+                : this.kind === 'ice'     ? COLORS.ice
+                : this.kind === 'parasite'? COLORS.fg
+                : COLORS.fg;
+    strokePoly(ctx, this.outline(), { color, width: 2 });
+
     if (this.volatile) {
       strokeCircle(ctx, this.x, this.y, this.radius * 0.42, { color: COLORS.volatile, width: 2 });
+    }
+
+    // type-specific interior markers
+    const r = this.radius;
+    if (this.kind === 'crystal') {
+      // small inner diamond
+      const s = r * 0.32;
+      const pts = [{ x: 0, y: -s }, { x: s, y: 0 }, { x: 0, y: s }, { x: -s, y: 0 }]
+        .map((p) => ({ x: this.x + p.x, y: this.y + p.y }));
+      strokePoly(ctx, pts, { color: COLORS.crystal, width: 1.5 });
+    } else if (this.kind === 'iron') {
+      // dented inner circle (second hit indicator fades when at full hp)
+      const alpha = this.hp >= 2 ? 0.7 : 0.3;
+      ctx.globalAlpha = alpha;
+      strokeCircle(ctx, this.x, this.y, r * 0.38, { color: COLORS.iron, width: 1.5 });
+      ctx.globalAlpha = 1;
+    } else if (this.kind === 'ice') {
+      // simple crosshair
+      const s = r * 0.28;
+      ctx.beginPath();
+      ctx.moveTo(this.x - s, this.y); ctx.lineTo(this.x + s, this.y);
+      ctx.moveTo(this.x, this.y - s); ctx.lineTo(this.x, this.y + s);
+      ctx.strokeStyle = COLORS.ice; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.7; ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (this.kind === 'parasite') {
+      // pulsing inner dot
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(this.t * 4);
+      fillDot(ctx, this.x, this.y, r * 0.22, COLORS.parasite);
+      ctx.globalAlpha = 1;
     }
   }
 }
