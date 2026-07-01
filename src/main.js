@@ -17,14 +17,19 @@ const world = { w: window.innerWidth, h: window.innerHeight }; // virtual gamepl
 const screen = { w: window.innerWidth, h: window.innerHeight }; // canvas in CSS px
 const view = { top: 0, right: 0, bottom: 0, left: 0 };
 
-// Control-deck layout (screen px), recomputed on resize.
+// Control layout (screen px), recomputed on resize.
 const layout = {
   deckTop: 0,
+  landscape: false,
+  controlsVisible: true,
+  controlsOverlay: false,
   play: { x: 0, y: 0, w: 0, h: 0 },
   steer: { cx: 0, cy: 0, r: 0, zone: { x: 0, y: 0, w: 0, h: 0 } },
   fire: { cx: 0, cy: 0, r: 0, zone: { x: 0, y: 0, w: 0, h: 0 } },
   center: { cx: 0, pauseY: 0, muteY: 0 },
 };
+
+let controllerConnected = false;
 
 // Hidden probe to read safe-area insets (notches, home indicator).
 const probe = document.createElement('div');
@@ -54,16 +59,64 @@ function resize() {
   view.bottom = parseFloat(cs.paddingBottom) || 0;
   view.left = parseFloat(cs.paddingLeft) || 0;
 
-  // ---- deck + zones ----
-  const deckUsable = clamp(h * 0.24, 140, 220); // touch area, excludes home indicator
-  const deckH = deckUsable + view.bottom;
-  layout.deckTop = h - deckH;
+  const isLandscape = w > h;
+  layout.landscape = isLandscape;
+  layout.controlsVisible = !controllerConnected;
+  layout.controlsOverlay = isLandscape && layout.controlsVisible;
 
   // Keep gameplay out of the safe-area insets (Dynamic Island / status bar /
   // rounded corners). That strip stays plain black instead of hidden play area.
   layout.play.x = view.left;
   layout.play.y = view.top;
   layout.play.w = w - view.left - view.right;
+  layout.play.h = h - view.top - view.bottom;
+
+  const emptyZone = { x: -1, y: -1, w: 0, h: 0 };
+  if (!layout.controlsVisible) {
+    layout.deckTop = h - view.bottom;
+    layout.steer.zone = emptyZone;
+    layout.fire.zone = emptyZone;
+    layout.center.cx = w / 2;
+    layout.center.pauseY = -100;
+    layout.center.muteY = -100;
+    return;
+  }
+
+  // ---- deck / overlay zones ----
+  const steerLeft = !settings.swapSides;
+
+  if (isLandscape) {
+    // Landscape keeps the playfield full-size and overlays the touch pads in
+    // the bottom corners. Zones stay local so normal playfield taps still work.
+    layout.deckTop = h - view.bottom;
+    const margin = clamp(Math.min(w, h) * 0.08, 28, 52);
+    const usableH = h - view.top - view.bottom;
+    const r = clamp(Math.min(usableH * 0.24, w * 0.10), 48, 86);
+    const cy = h - view.bottom - margin - r;
+    const leftCx = view.left + margin + r;
+    const rightCx = w - view.right - margin - r;
+    const zoneW = r * 2.6;
+    const zoneH = r * 2.6;
+    const leftZone = { x: leftCx - zoneW / 2, y: cy - zoneH / 2, w: zoneW, h: zoneH };
+    const rightZone = { x: rightCx - zoneW / 2, y: cy - zoneH / 2, w: zoneW, h: zoneH };
+
+    layout.steer.zone = steerLeft ? leftZone : rightZone;
+    layout.steer.cx = steerLeft ? leftCx : rightCx; layout.steer.cy = cy;
+    layout.steer.r = r;
+
+    layout.fire.zone = steerLeft ? rightZone : leftZone;
+    layout.fire.cx = steerLeft ? rightCx : leftCx; layout.fire.cy = cy;
+    layout.fire.r = clamp(r * 0.9, 44, 78);
+
+    layout.center.cx = w / 2;
+    layout.center.pauseY = h - view.bottom - margin - 58;
+    layout.center.muteY = h - view.bottom - margin - 18;
+    return;
+  }
+
+  const deckUsable = clamp(h * 0.24, 140, 220); // touch area, excludes home indicator
+  const deckH = deckUsable + view.bottom;
+  layout.deckTop = h - deckH;
   layout.play.h = layout.deckTop - view.top;
 
   const centerW = 84;
@@ -71,8 +124,6 @@ function resize() {
   const cy = layout.deckTop + deckUsable / 2;
   const fitR = Math.min(sideW, deckUsable) / 2;
 
-  // steer on the left by default; swap puts it on the right (left-handed)
-  const steerLeft = !settings.swapSides;
   const leftCx = sideW / 2, rightCx = w - sideW / 2;
   const leftZone = { x: 0, y: layout.deckTop, w: sideW, h: deckH };
   const rightZone = { x: w - sideW, y: layout.deckTop, w: sideW, h: deckH };
@@ -106,8 +157,13 @@ canvas.addEventListener('pointerdown', () => unlock());
 
 // UI buttons: pause + mute live in the deck's centre column.
 const BTN = 44;
-const pauseRect = () => ({ x: layout.center.cx - BTN / 2, y: layout.center.pauseY - BTN / 2, w: BTN, h: BTN });
-const muteRect = () => ({ x: layout.center.cx - BTN / 2, y: layout.center.muteY - BTN / 2, w: BTN, h: BTN });
+const offscreenRect = () => ({ x: -100, y: -100, w: 0, h: 0 });
+const pauseRect = () => layout.controlsVisible
+  ? ({ x: layout.center.cx - BTN / 2, y: layout.center.pauseY - BTN / 2, w: BTN, h: BTN })
+  : offscreenRect();
+const muteRect = () => layout.controlsVisible
+  ? ({ x: layout.center.cx - BTN / 2, y: layout.center.muteY - BTN / 2, w: BTN, h: BTN })
+  : offscreenRect();
 
 let muted = getMuted();
 initSettingsUI({ onSoundChange: (m) => { muted = m; } });
@@ -139,6 +195,12 @@ function frame(now) {
 
   input.update(dt);
   const gp = gamepad.poll();
+  const hasController = !!gp;
+  if (hasController !== controllerConnected) {
+    controllerConnected = hasController;
+    input.reset();
+    resize();
+  }
   const wt0 = performance.now();
 
   // FOV: world is the play area scaled up by `fov`, so more space is visible.
@@ -200,7 +262,7 @@ function frame(now) {
   if (playing && !settings.planet) drawShipIndicator(zoom);
 
   const inGame = playing || game.state === STATE.PAUSED;
-  if (inGame) drawDeck(playing);
+  if (inGame && layout.controlsVisible) drawDeck(playing);
 
   game.renderOverlay(ctx, screen);
   if (!playing && gp && !isSettingsOpen() && !isUpgradesOpen()) drawControllerHint();
@@ -243,10 +305,13 @@ function drawShipIndicator(zoom) {
 
 // ---------------- deck chrome ----------------
 function drawDeck(playing) {
-  // separator
-  ctx.globalAlpha = 1;
-  strokePoly(ctx, [{ x: 0, y: layout.deckTop }, { x: screen.w, y: layout.deckTop }],
-    { color: '#1c1c20', width: 2, close: false });
+  if (!layout.controlsVisible) return;
+
+  if (!layout.controlsOverlay) {
+    ctx.globalAlpha = 1;
+    strokePoly(ctx, [{ x: 0, y: layout.deckTop }, { x: screen.w, y: layout.deckTop }],
+      { color: '#1c1c20', width: 2, close: false });
+  }
 
   // steer pad — static base ring + centre dot
   const s = layout.steer;

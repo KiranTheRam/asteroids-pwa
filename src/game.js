@@ -270,7 +270,7 @@ export class Game {
       && a.y + a.radius >= 0 && a.y - a.radius <= this.world.h
     ));
 
-    if (clear || (!visible && (this.noAsteroidTimer += dt) >= CFG.waveStragglerGrace)) {
+    if (clear || (!visible && (this.noAsteroidTimer += dt) >= CFG.flatWaveStragglerGrace)) {
       this.asteroids = [];
       this.noAsteroidTimer = 0;
       this.lives = Math.min(this.maxLives, this.lives + 1); // replenish 1 per wave
