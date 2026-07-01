@@ -15,14 +15,14 @@ The app is a static site served by nginx. On your Linux server:
 ```bash
 git clone https://github.com/KiranTheRam/<repo>.git asteroids
 cd asteroids
-docker compose up -d --build
+docker compose up -d
 ```
 
 Then open `http://<server-ip>:8080` and, on mobile, **Add to Home Screen**.
 
 - Change the published port by editing the `ports` mapping in `docker-compose.yml`
   (e.g. `"9000:80"`).
-- Update after code changes: `git pull && docker compose up -d --build`.
+- Update after a new registry image is published: `docker compose pull && docker compose up -d`.
 
 ### ⚠️ HTTPS is required for the full PWA (offline + install)
 
