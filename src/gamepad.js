@@ -9,13 +9,18 @@ export class GamepadInput {
     this.prevStart = false;
     this.prevA = false;
     this.eventConnected = new Set();
+    this.known = false;
 
     if (typeof window !== 'undefined') {
       window.addEventListener('gamepadconnected', (e) => {
-        if (e.gamepad) this.eventConnected.add(e.gamepad.index);
+        if (e.gamepad) {
+          this.eventConnected.add(e.gamepad.index);
+          this.known = true;
+        }
       });
       window.addEventListener('gamepaddisconnected', (e) => {
         if (e.gamepad) this.eventConnected.delete(e.gamepad.index);
+        this.known = this.eventConnected.size > 0;
       });
     }
   }
@@ -36,6 +41,7 @@ export class GamepadInput {
     const startEdge = startNow && !this.prevStart;
     const aEdge = aNow && !this.prevA;
     this.prevStart = startNow; this.prevA = aNow;
+    this.known = true;
 
     return {
       connected: true,
@@ -45,6 +51,8 @@ export class GamepadInput {
       fire, startEdge, aEdge,
     };
   }
+
+  hasKnownController() { return this.known || !!this._findPad(); }
 
   _findPad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];

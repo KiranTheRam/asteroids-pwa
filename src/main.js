@@ -64,12 +64,21 @@ function resize() {
   layout.controlsVisible = !controllerConnected;
   layout.controlsOverlay = isLandscape && layout.controlsVisible;
 
-  // Keep gameplay out of the safe-area insets (Dynamic Island / status bar /
-  // rounded corners). That strip stays plain black instead of hidden play area.
-  layout.play.x = view.left;
-  layout.play.y = view.top;
-  layout.play.w = w - view.left - view.right;
-  layout.play.h = h - view.top - view.bottom;
+  if (isLandscape) {
+    // Landscape uses the whole canvas. Safe-area insets still position UI, but
+    // not the playable world.
+    layout.play.x = 0;
+    layout.play.y = 0;
+    layout.play.w = w;
+    layout.play.h = h;
+  } else {
+    // Keep portrait gameplay out of safe-area insets. That strip stays plain
+    // black instead of hidden play area.
+    layout.play.x = view.left;
+    layout.play.y = view.top;
+    layout.play.w = w - view.left - view.right;
+    layout.play.h = h - view.top - view.bottom;
+  }
 
   const emptyZone = { x: -1, y: -1, w: 0, h: 0 };
   if (!layout.controlsVisible) {
@@ -195,7 +204,7 @@ function frame(now) {
 
   input.update(dt);
   const gp = gamepad.poll();
-  const hasController = !!gp;
+  const hasController = !!gp || gamepad.hasKnownController();
   if (hasController !== controllerConnected) {
     controllerConnected = hasController;
     input.reset();
@@ -265,7 +274,7 @@ function frame(now) {
   if (inGame && layout.controlsVisible) drawDeck(playing);
 
   game.renderOverlay(ctx, screen);
-  if (!playing && gp && !isSettingsOpen() && !isUpgradesOpen()) drawControllerHint();
+  if (!playing && controllerConnected && !isSettingsOpen() && !isUpgradesOpen()) drawControllerHint();
   if (settings.showFps) drawFps();
 
   // actual render cost this frame (excludes the wait between frames)

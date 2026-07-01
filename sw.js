@@ -1,5 +1,5 @@
 // App-shell service worker: precache everything, serve cache-first => fully offline.
-const CACHE_VERSION = 'asteroids-v20';
+const CACHE_VERSION = 'asteroids-v21';
 
 const ASSETS = [
   './',
