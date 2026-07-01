@@ -5,21 +5,33 @@
 const DZ = 0.22;
 
 export class GamepadInput {
-  constructor() { this.prevStart = false; this.prevA = false; }
+  constructor() {
+    this.prevStart = false;
+    this.prevA = false;
+    this.eventConnected = new Set();
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('gamepadconnected', (e) => {
+        if (e.gamepad) this.eventConnected.add(e.gamepad.index);
+      });
+      window.addEventListener('gamepaddisconnected', (e) => {
+        if (e.gamepad) this.eventConnected.delete(e.gamepad.index);
+      });
+    }
+  }
 
   // Returns null if no controller is present, else a normalized intent object.
   poll() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    let gp = null;
-    for (const p of pads) { if (p && p.connected) { gp = p; break; } }
+    const gp = this._findPad();
     if (!gp) { this.prevStart = this.prevA = false; return null; }
 
     const ax = (i) => { const v = gp.axes[i] || 0; return Math.abs(v) < DZ ? 0 : v; };
     const btn = (i) => (gp.buttons[i] ? gp.buttons[i].pressed : false);
 
-    const lx = ax(0), ly = ax(1), rx = ax(2), ry = ax(3);
-    const fire = btn(7) || btn(0) || btn(5); // RT / A / RB
-    const startNow = btn(9) || btn(8);       // Start/Options or Select
+    const lx = ax(0), ly = ax(1);
+    const [rx, ry] = this._rightStick(gp, ax);
+    const fire = btn(7) || btn(0) || btn(5) || btn(1); // RT / A / RB / B
+    const startNow = btn(9) || btn(8) || btn(11) || btn(10); // Start/Options or Select
     const aNow = btn(0);
     const startEdge = startNow && !this.prevStart;
     const aEdge = aNow && !this.prevA;
@@ -32,5 +44,37 @@ export class GamepadInput {
       rmag: Math.hypot(rx, ry),
       fire, startEdge, aEdge,
     };
+  }
+
+  _findPad() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let fallback = null;
+    for (const p of pads) {
+      if (!p) continue;
+      if (p.connected || this.eventConnected.has(p.index)) return p;
+      if (!fallback && this._looksLikeDirectInputPad(p)) fallback = p;
+    }
+    return fallback;
+  }
+
+  _looksLikeDirectInputPad(p) {
+    if (!p.id) return false;
+    return (p.axes && p.axes.length > 0) || (p.buttons && p.buttons.length > 0);
+  }
+
+  _rightStick(gp, ax) {
+    if (gp.mapping === 'standard') return [ax(2), ax(3)];
+
+    // DirectInput layouts are not standardized. Prefer the common pair, then
+    // fall back to the next common variant without treating trigger axes as aim.
+    const pairs = [[2, 3], [3, 4]];
+    let best = [0, 0];
+    let bestMag = 0;
+    for (const [x, y] of pairs) {
+      const rx = ax(x), ry = ax(y);
+      const mag = Math.hypot(rx, ry);
+      if (mag > bestMag) { best = [rx, ry]; bestMag = mag; }
+    }
+    return best;
   }
 }
