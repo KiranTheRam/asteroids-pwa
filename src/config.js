@@ -75,6 +75,7 @@ export const CFG = {
   ],
   astBaseCount: 4,          // wave 1 large asteroids
   astWrapPad: 64,
+  waveStragglerGrace: 3,    // max seconds with no playable asteroids before advancing
 
   // UFO
   ufoRadius: 18,

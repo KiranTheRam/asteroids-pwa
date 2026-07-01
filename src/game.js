@@ -52,6 +52,7 @@ export class Game {
     this.aimHasDir = false;  // twin-stick: right pad dragged far enough to aim
     this.steer = { active: false, angle: 0, thrust: 0 };
     this.waveBanner = 0;
+    this.noAsteroidTimer = 0;
     this.comboCount = 0;
     this.comboTimer = 0;
     this.mult = 1;
@@ -138,6 +139,7 @@ export class Game {
 
   _startWave(n) {
     this.wave = n;
+    this.noAsteroidTimer = 0;
     const count = CFG.astBaseCount + (n - 1);
     for (let i = 0; i < count; i++) this._spawnAsteroidEdge();
     this.waveBanner = 1.6;
@@ -252,10 +254,31 @@ export class Game {
 
     this._collisions();
 
-    if (this.asteroids.length === 0) {
+    this._advanceWaveIfClear(dt);
+  }
+
+  _advanceWaveIfClear(dt) {
+    this.asteroids = this.asteroids.filter((a) => {
+      return !a._dead
+        && Number.isFinite(a.x) && Number.isFinite(a.y)
+        && Number.isFinite(a.vx) && Number.isFinite(a.vy);
+    });
+
+    const clear = this.asteroids.length === 0;
+    const visible = !clear && this.asteroids.some((a) => (
+      a.x + a.radius >= 0 && a.x - a.radius <= this.world.w
+      && a.y + a.radius >= 0 && a.y - a.radius <= this.world.h
+    ));
+
+    if (clear || (!visible && (this.noAsteroidTimer += dt) >= CFG.waveStragglerGrace)) {
+      this.asteroids = [];
+      this.noAsteroidTimer = 0;
       this.lives = Math.min(this.maxLives, this.lives + 1); // replenish 1 per wave
       this._startWave(this.wave + 1);
+      return;
     }
+
+    if (visible) this.noAsteroidTimer = 0;
   }
 
   _updateUfos(hdt) {
