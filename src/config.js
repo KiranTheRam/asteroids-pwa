@@ -27,6 +27,7 @@ export const COLORS = {
   iron: '#94a3b8',      // slate
   ice: '#bae6fd',       // pale blue
   parasite: '#c4b5fd',  // violet-pink
+  life: '#2dd4bf',      // teal (heal / 1-UP)
   // roguelite
   mineral: '#4ade80',   // green
 };
@@ -41,6 +42,8 @@ export const POWERUPS = {
   homing: { color: COLORS.homing, glyph: 'H', duration: 8 },
   slow:   { color: COLORS.slow,   glyph: 'T', duration: 5 },
   bomb:   { color: COLORS.bomb,   glyph: 'B', instant: true },
+  // heal: restores to 3 if under, else +1 (capped). Rare, drops in every mode.
+  life:   { color: COLORS.life,   glyph: '+', instant: true },
 };
 
 export const CFG = {
@@ -98,6 +101,8 @@ export const CFG = {
   steerMaxDrag: 90,         // px drag mapped to full thrust
 
   startLives: 3,
+  lifeCap: 5,               // max lives you can be replenished up to
+  lifeDropChance: 0.14,     // chance a power-up drop is the rare life pickup
 
   // ---- arcade enemies ----
   hunterRadius: 11,
@@ -158,13 +163,14 @@ export function angleDelta(a, b) {
 }
 
 // ---- roguelite upgrade definitions ----
-// costs: array of mineral costs per level (length == maxLevel)
+// costs: array of mineral costs per level (length == maxLevel).
+// Costs escalate steeply (~3-4x per level) so maxing out takes many good runs.
 export const UPGRADES = [
-  { key: 'extraLife',        label: 'Extra Life',       hint: '+1 starting life',         costs: [100, 250, 500] },
-  { key: 'bulletSpeed',      label: 'Rapid Reflexes',   hint: '+8% bullet speed',          costs: [80, 200, 400] },
-  { key: 'shipSpeed',        label: 'Afterburner',      hint: '+10% max ship speed',       costs: [80, 200, 400] },
-  { key: 'fireRate',         label: 'Hair Trigger',     hint: '−0.02s fire cooldown',      costs: [100, 250, 500] },
-  { key: 'powerupDuration',  label: 'Extended Effects', hint: '+15% power-up duration',    costs: [120, 300, 600] },
-  { key: 'startShield',      label: 'Armored Entry',    hint: 'Start each life w/ 3s shield', costs: [350] },
-  { key: 'mineralBonus',     label: 'Prospector',       hint: '+20% mineral earnings',     costs: [60, 150, 300] },
+  { key: 'extraLife',        label: 'Extra Life',       hint: '+1 starting life',         costs: [500, 2000, 6000] },
+  { key: 'bulletSpeed',      label: 'Rapid Reflexes',   hint: '+8% bullet speed',          costs: [300, 1000, 3000] },
+  { key: 'shipSpeed',        label: 'Afterburner',      hint: '+10% max ship speed',       costs: [300, 1000, 3000] },
+  { key: 'fireRate',         label: 'Hair Trigger',     hint: '−0.02s fire cooldown',      costs: [400, 1400, 4200] },
+  { key: 'powerupDuration',  label: 'Extended Effects', hint: '+15% power-up duration',    costs: [350, 1200, 3600] },
+  { key: 'startShield',      label: 'Armored Entry',    hint: 'Start each life w/ 3s shield', costs: [1500] },
+  { key: 'mineralBonus',     label: 'Prospector',       hint: '+20% mineral earnings',     costs: [300, 1000, 3000] },
 ];

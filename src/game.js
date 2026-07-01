@@ -9,6 +9,7 @@ import {
 import { Shake, glow, noGlow } from './render.js';
 import { sfx } from './audio.js';
 import { settings } from './settings.js';
+import { PlanetField } from './planet.js';
 import { getHighScore, setHighScore, getRoguelite, setRoguelite } from './storage.js';
 
 const STATE = { TITLE: 'title', PLAYING: 'playing', PAUSED: 'paused', OVER: 'over' };
@@ -45,10 +46,10 @@ export class Game {
     this.mineTimer = rand(...CFG.mineEvery);
     this.sniperTimer = rand(...CFG.sniperEvery);
     this.gravTimer = rand(...CFG.gravityEvery);
-    this.nextExtraLife = 10000;
     this.autofireOn = false; // classic: toggled by the right fire pad
     this.firing = false;     // is the ship shooting this frame (either scheme)
     this.fireAngle = -Math.PI / 2; // direction shots travel
+    this.aimHasDir = false;  // twin-stick: right pad dragged far enough to aim
     this.steer = { active: false, angle: 0, thrust: 0 };
     this.waveBanner = 0;
     this.comboCount = 0;
@@ -56,9 +57,11 @@ export class Game {
     this.mult = 1;
 
     // Snapshot mode + per-feature flags at game start so toggling mid-run
-    // can't half-apply. Classic disables everything arcade.
+    // can't half-apply. Classic disables everything arcade. Planet mode is a
+    // spherical playfield that also enables the arcade content set.
     this.arcade = !!settings.arcade;
-    const a = this.arcade;
+    this.planetMode = !!settings.planet;
+    const a = this.arcade || this.planetMode;
     this.flags = {
       hunter: a && settings.arcHunter,
       mine: a && settings.arcMine,
@@ -86,8 +89,11 @@ export class Game {
     this.rlFireCooldown = CFG.fireCooldown - (upg.fireRate          || 0) * 0.02;
     this.rlPuMult       = 1 + (upg.powerupDuration || 0) * 0.15;
     this.lives          = CFG.startLives + (upg.extraLife || 0);
+    this.maxLives       = Math.max(this.lives, CFG.lifeCap); // replenish ceiling
     this.mineralsEarned = 0; // track what was earned this run
     this.lastMineralsMsg = '';
+
+    this.pf = this.planetMode ? new PlanetField(this) : null;
   }
 
   // Power-up drop pool: classic three always, arcade extras if enabled.
@@ -103,8 +109,25 @@ export class Game {
   newGame() {
     this._resetField();
     this.state = STATE.PLAYING;
+    if (this.planetMode) { this.pf.start(); return; }
     this._spawnShip();
     this._startWave(1);
+  }
+
+  // Shared damage hook used by Planet mode. Returns true if the run ended.
+  planetDamage() {
+    this.shake.add(16);
+    sfx.death();
+    if (settings.haptics && navigator.vibrate) navigator.vibrate(120);
+    this.comboCount = 0; this.comboTimer = 0; this.mult = 1;
+    this.lives--;
+    if (this.lives <= 0) {
+      this.state = STATE.OVER;
+      this.high = setHighScore(this.score);
+      this._awardMinerals();
+      return true;
+    }
+    return false;
   }
 
   _spawnShip() {
@@ -165,6 +188,13 @@ export class Game {
   update(dt) {
     this.shake.update(dt);
     this.titleSpin += dt * 0.3;
+
+    if (this.planetMode) {
+      this.pf.updateParticles(dt);
+      if (this.state === STATE.PLAYING) this.pf.update(dt);
+      return;
+    }
+
     for (const p of this.particles) p.update(dt);
     this.particles = this.particles.filter((p) => !p.dead);
 
@@ -222,12 +252,9 @@ export class Game {
 
     this._collisions();
 
-    if (this.asteroids.length === 0) this._startWave(this.wave + 1);
-
-    if (this.score >= this.nextExtraLife) {
-      this.lives++;
-      this.nextExtraLife += 10000;
-      sfx.powerup();
+    if (this.asteroids.length === 0) {
+      this.lives = Math.min(this.maxLives, this.lives + 1); // replenish 1 per wave
+      this._startWave(this.wave + 1);
     }
   }
 
@@ -556,11 +583,13 @@ export class Game {
       return;
     }
 
-    if (a.kind === 'ice') {
-      // Ice: many tiny low-score shards
+    if (a.kind === 'ice' && a.tier < CFG.astTiers.length - 1) {
+      // Ice: many tiny low-score shards. The tier guard is essential — the
+      // shards are the smallest tier, so they fall through to the normal
+      // (no-split) path instead of re-shattering into 4 more ice each forever.
       this._burst(a.x, a.y, 20, COLORS.ice, 180, 0.9);
       this.shake.add(4);
-      for (let i = 0; i < CFG.iceShardCount; i++) {
+      for (let i = 0; i < CFG.iceShardCount && this.asteroids.length < 240; i++) {
         const shard = new Asteroid(a.x, a.y, 2);
         shard.score = CFG.iceShardScore;
         shard.kind = 'ice';
@@ -590,18 +619,27 @@ export class Game {
 
   _maybeDropPowerup(x, y) {
     if (Math.random() > CFG.powerupDropChance) return;
-    this.powerups.push(new PowerUp(x, y, this.pool[randInt(0, this.pool.length - 1)]));
+    const type = Math.random() < CFG.lifeDropChance
+      ? 'life'
+      : this.pool[randInt(0, this.pool.length - 1)];
+    this.powerups.push(new PowerUp(x, y, type));
   }
 
   _applyPowerup(type) {
     const def = POWERUPS[type];
     if (def.instant) {
       if (type === 'bomb') this._bomb();
+      else if (type === 'life') this._gainLife();
     } else {
       this.pu[type] = def.duration * this.rlPuMult;
     }
     this._burst(this.ship.x, this.ship.y, 18, def.color, 180);
     sfx.powerup();
+  }
+
+  // Heal pickup: back to 3 if under, otherwise +1, capped at maxLives.
+  _gainLife() {
+    this.lives = Math.min(this.maxLives, this.lives < 3 ? 3 : this.lives + 1);
   }
 
   // Screen-clearing bomb: vaporise all asteroids + arcade enemies.
@@ -670,6 +708,7 @@ export class Game {
 
   // ---------------- render ----------------
   renderWorld(ctx, zoom, play) {
+    if (this.planetMode) { this.pf.render(ctx, play, this.shake); return; }
     ctx.save();
     ctx.beginPath();
     ctx.rect(play.x, play.y, play.w, play.h);
@@ -784,18 +823,58 @@ export class Game {
     noGlow(ctx);
   }
 
+  _ensureStars(w, h) {
+    if (this._stars && this._starsW === w && this._starsH === h) return;
+    this._starsW = w; this._starsH = h;
+    const n = Math.round(clamp(w * h / 9000, 40, 90));
+    const stars = [];
+    for (let i = 0; i < n; i++) {
+      const accent = Math.random() < 0.12;
+      stars.push({
+        x: Math.random() * w, y: Math.random() * h,
+        r: rand(0.6, 1.9), ph: rand(0, TAU), spd: rand(0.5, 2.0), base: rand(0.22, 0.9),
+        color: accent ? (Math.random() < 0.5 ? COLORS.thrust : COLORS.well) : COLORS.fg,
+      });
+    }
+    this._stars = stars;
+  }
+
+  _drawStarfield(ctx, w, h) {
+    this._ensureStars(w, h);
+    const t = performance.now() / 1000;
+    for (const s of this._stars) {
+      ctx.globalAlpha = clamp(s.base * (0.45 + 0.55 * Math.sin(t * s.spd + s.ph)), 0, 1);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, TAU);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   renderOverlay(ctx, screen) {
     if (this.state === STATE.PLAYING) return;
     const w = screen.w, h = screen.h;
-    ctx.fillStyle = 'rgba(10,10,10,0.55)';
-    ctx.fillRect(0, 0, w, h);
+    if (this.state === STATE.PAUSED) {
+      // keep the frozen board faintly visible behind the pause text
+      ctx.fillStyle = 'rgba(8,8,10,0.62)';
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      // TITLE / OVER: a clean space backdrop instead of frozen gameplay
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      bg.addColorStop(0, '#06070b');
+      bg.addColorStop(1, '#0a0b12');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+      this._drawStarfield(ctx, w, h);
+    }
     const cx = w / 2, cy = h / 2;
     const big = Math.min(w * 0.13, 64);
-    const modeTag = settings.arcade ? 'ARCADE MODE' : 'CLASSIC MODE';
+    const modeTag = settings.planet ? 'PLANET MODE' : settings.arcade ? 'ARCADE MODE' : 'CLASSIC MODE';
 
     if (this.state === STATE.TITLE) {
       this._title(ctx, cx, cy - big, 'ASTEROIDS', big, COLORS.fg, 10);
-      ctx.fillStyle = settings.arcade ? COLORS.spread : COLORS.dim;
+      ctx.fillStyle = settings.planet ? COLORS.well : settings.arcade ? COLORS.spread : COLORS.dim;
       ctx.font = '700 13px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText(modeTag, cx, cy - big + big * 0.62);

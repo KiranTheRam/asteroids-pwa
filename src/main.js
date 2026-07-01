@@ -8,6 +8,7 @@ import { unlock, toggleMute, getMuted } from './audio.js';
 import { settings } from './settings.js';
 import { initSettingsUI, isSettingsOpen } from './settings-ui.js';
 import { initUpgradesUI, isUpgradesOpen, openUpgrades } from './upgrades-ui.js';
+import { GamepadInput } from './gamepad.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -97,6 +98,7 @@ let appliedSwap = settings.swapSides; // relayout trigger when this changes
 
 const game = new Game(world);
 const input = new Input(canvas, layout);
+const gamepad = new GamepadInput();
 
 // Unlock audio on every press until the context is actually running (iOS can
 // ignore the first attempt); unlock() is cheap and self-guards after priming.
@@ -136,6 +138,7 @@ function frame(now) {
   if (settings.swapSides !== appliedSwap) { appliedSwap = settings.swapSides; resize(); }
 
   input.update(dt);
+  const gp = gamepad.poll();
   const wt0 = performance.now();
 
   // FOV: world is the play area scaled up by `fov`, so more space is visible.
@@ -153,20 +156,31 @@ function frame(now) {
       // right stick: fire while touched, in its aimed direction
       input.consumeFireToggles();
       game.firing = input.aim.active;
-      if (game.ship) game.fireAngle = input.aim.hasDir ? input.aim.angle : game.ship.angle;
+      game.aimHasDir = input.aim.hasDir;
+      if (input.aim.hasDir) game.fireAngle = input.aim.angle;
+      else if (game.ship) game.fireAngle = game.ship.angle;
       game.autofireOn = false;
     } else {
       // right pad: each tap flips autofire; shots go where the ship points
       if (input.consumeFireToggles() % 2 === 1) game.autofireOn = !game.autofireOn;
       game.firing = game.autofireOn;
+      game.aimHasDir = false;
       if (game.ship) game.fireAngle = game.ship.angle;
     }
     input.consumeMenuTap();
+    // controller overrides touch when a stick/button is active
+    if (gp) {
+      if (gp.lmag > 0) game.steer = { active: true, angle: Math.atan2(gp.ly, gp.lx), thrust: Math.min(1, gp.lmag) };
+      if (gp.rmag > 0) { game.firing = true; game.aimHasDir = true; game.fireAngle = Math.atan2(gp.ry, gp.rx); }
+      else if (gp.fire) { game.firing = true; game.aimHasDir = false; if (game.ship) game.fireAngle = game.ship.angle; }
+      if (gp.startEdge) game.togglePause();
+    }
   } else if (isSettingsOpen() || isUpgradesOpen()) {
     input.consumeFireToggles(); input.consumeMenuTap();
     game.firing = false;
   } else {
     if (input.consumeMenuTap() > 0) game.tap();
+    if (gp && (gp.startEdge || gp.aEdge)) game.tap(); // start / restart / resume
     input.consumeFireToggles();
     game.firing = false;
   }
@@ -180,13 +194,16 @@ function frame(now) {
   ctx.fillRect(0, 0, screen.w, screen.h);
 
   game.renderWorld(ctx, zoom, layout.play);
-  game.renderHud(ctx, screen, layout.play, view);
-  if (playing) drawShipIndicator(zoom);
+  // HUD only while playing/paused — on title & game-over it's zeros/redundant
+  // and clutters the clean start screen (the overlay shows score there).
+  if (playing || game.state === STATE.PAUSED) game.renderHud(ctx, screen, layout.play, view);
+  if (playing && !settings.planet) drawShipIndicator(zoom);
 
   const inGame = playing || game.state === STATE.PAUSED;
   if (inGame) drawDeck(playing);
 
   game.renderOverlay(ctx, screen);
+  if (!playing && gp && !isSettingsOpen() && !isUpgradesOpen()) drawControllerHint();
   if (settings.showFps) drawFps();
 
   // actual render cost this frame (excludes the wait between frames)
@@ -305,6 +322,16 @@ function deckLabel(text, x, y) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, y);
+}
+
+function drawControllerHint() {
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = COLORS.life;
+  ctx.font = '700 12px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('CONTROLLER CONNECTED', screen.w / 2, screen.h - 24 - view.bottom);
+  ctx.globalAlpha = 1;
 }
 
 function drawFps() {

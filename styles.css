@@ -55,13 +55,16 @@ body {
   display: grid;
   place-items: center;
   color: var(--fg);
-  background: rgba(20, 20, 22, 0.6);
-  border: 1px solid #2a2a2e;
+  background: rgba(10, 10, 13, 0.92);
+  border: 1px solid #3a3a44;
   border-radius: 12px;
-  opacity: 0.75;
+  opacity: 0.95;
   z-index: 20;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 #gear:active { opacity: 1; transform: scale(0.94); }
 body.playing #gear { display: none; }
@@ -242,13 +245,16 @@ input[type="range"]::-moz-range-thumb {
   display: grid;
   place-items: center;
   color: #4ade80;
-  background: rgba(20, 20, 22, 0.6);
-  border: 1px solid #2a2a2e;
+  background: rgba(10, 10, 13, 0.92);
+  border: 1px solid #2f5a3c;
   border-radius: 12px;
-  opacity: 0.75;
+  opacity: 0.95;
   z-index: 20;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 #upg-open:active { opacity: 1; transform: scale(0.94); }
 body.playing #upg-open { display: none; }

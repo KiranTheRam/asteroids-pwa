@@ -1,5 +1,5 @@
 // App-shell service worker: precache everything, serve cache-first => fully offline.
-const CACHE_VERSION = 'asteroids-v11';
+const CACHE_VERSION = 'asteroids-v16';
 
 const ASSETS = [
   './',
@@ -19,6 +19,9 @@ const ASSETS = [
   './src/storage.js',
   './src/settings.js',
   './src/settings-ui.js',
+  './src/planet.js',
+  './src/upgrades-ui.js',
+  './src/gamepad.js',
 ];
 
 self.addEventListener('install', (e) => {

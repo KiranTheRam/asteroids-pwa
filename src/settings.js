@@ -20,6 +20,8 @@ export const DEFAULTS = {
   sndUfo: true,
   sndPowerup: true,
   sndDeath: true,
+  // ---- Modes ----
+  planet: false,   // spherical Super Stardust-style playfield (enables arcade content)
   // ---- Arcade mode (off = Classic) + per-feature toggles ----
   arcade: false,
   arcHunter: true,

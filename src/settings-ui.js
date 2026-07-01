@@ -27,6 +27,8 @@ const TOGGLES = [
   ['sndUfo', 'set-snd-ufo'],
   ['sndPowerup', 'set-snd-powerup'],
   ['sndDeath', 'set-snd-death'],
+  // modes
+  ['planet', 'set-planet'],
   // arcade mode + per-feature toggles
   ['arcade', 'set-arcade'],
   ['arcHunter', 'set-arc-hunter'],
@@ -55,9 +57,10 @@ function refreshSoundRows() {
   });
 }
 
-// Grey out arcade feature rows when Arcade mode is off (Classic).
+// Grey out arcade feature rows when neither Arcade nor Planet mode is on
+// (Planet mode reuses the same arcade content toggles).
 function refreshArcadeRows() {
-  const off = !settings.arcade;
+  const off = !settings.arcade && !settings.planet;
   document.querySelectorAll('#settings .arc').forEach((el) => {
     el.style.opacity = off ? '0.4' : '1';
     const cb = el.querySelector && el.querySelector('input');
@@ -93,7 +96,7 @@ export function initSettingsUI(opts = {}) {
     $(cid).addEventListener('change', (e) => {
       settings[key] = e.target.checked;
       saveSettings();
-      if (key === 'arcade') refreshArcadeRows();
+      if (key === 'arcade' || key === 'planet') refreshArcadeRows();
     });
   }
 
