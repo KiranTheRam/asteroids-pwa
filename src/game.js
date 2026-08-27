@@ -37,6 +37,7 @@ export class Game {
     this.particles = [];
     this.powerups = [];
     this.score = 0;
+    this.newHigh = false;
     this.lives = CFG.startLives; // overridden below by roguelite extraLife
     this.wave = 0;
     this.fireCd = 0;
@@ -123,6 +124,7 @@ export class Game {
     this.lives--;
     if (this.lives <= 0) {
       this.state = STATE.OVER;
+      this.newHigh = this.score > this.high;
       this.high = setHighScore(this.score);
       this._awardMinerals();
       return true;
@@ -375,7 +377,10 @@ export class Game {
     const nx = s.x + Math.cos(ang) * s.radius * 1.3;
     const ny = s.y + Math.sin(ang) * s.radius * 1.3;
     this.fireCd = this.pu.rapid > 0 ? CFG.rapidCooldown : this.rlFireCooldown;
-    const angles = this.pu.spread > 0 ? [ang - 0.22, ang, ang + 0.22] : [ang];
+    // Put the straight shot first so it is retained when only one pool slot
+    // remains, and never let a spread volley overflow the player-bullet cap.
+    const angles = (this.pu.spread > 0 ? [ang, ang - 0.22, ang + 0.22] : [ang])
+      .slice(0, CFG.maxBullets - playerBullets);
     const opts = { pierce: this.pu.pierce > 0, homing: this.pu.homing > 0, speed: this.rlBulletSpeed };
     for (const a of angles) this.bullets.push(new Bullet(nx, ny, a, opts));
     sfx.fire();
@@ -688,6 +693,7 @@ export class Game {
     if (this.lives <= 0) {
       this.ship = null;
       this.state = STATE.OVER;
+      this.newHigh = this.score > this.high;
       this.high = setHighScore(this.score);
       this._awardMinerals();
     } else {
@@ -785,7 +791,8 @@ export class Game {
       ctx.fillStyle = COLORS.dim;
       ctx.fillRect(rx - 60, y, 60, 4);
       ctx.fillStyle = POWERUPS[k].color;
-      ctx.fillRect(rx - 60, y, 60 * (this.pu[k] / POWERUPS[k].duration), 4);
+      const fullDuration = POWERUPS[k].duration * this.rlPuMult;
+      ctx.fillRect(rx - 60, y, 60 * clamp(this.pu[k] / fullDuration, 0, 1), 4);
       pi++;
     }
 
@@ -892,9 +899,9 @@ export class Game {
       ctx.font = '700 28px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText('SCORE ' + this.score, cx, cy + 4);
-      ctx.fillStyle = this.score >= this.high ? COLORS.rapid : COLORS.dim;
+      ctx.fillStyle = this.newHigh ? COLORS.rapid : COLORS.dim;
       ctx.font = '600 15px ui-monospace, monospace';
-      ctx.fillText((this.score >= this.high ? 'NEW BEST · ' : 'BEST ') + this.high, cx, cy + 36);
+      ctx.fillText((this.newHigh ? 'NEW BEST · ' : 'BEST ') + this.high, cx, cy + 36);
       if (this.mineralsEarned > 0) {
         ctx.fillStyle = COLORS.mineral;
         ctx.font = '600 14px ui-monospace, monospace';

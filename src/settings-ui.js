@@ -69,6 +69,7 @@ function refreshArcadeRows() {
 }
 
 let onSoundChange = null;
+let returnFocus = null;
 
 function syncToUI() {
   for (const [key, sid, oid, fmt] of SLIDERS) {
@@ -110,6 +111,10 @@ export function initSettingsUI(opts = {}) {
 
   $('set-reset').addEventListener('click', () => {
     resetSettings();
+    // Master sound is persisted separately from the per-effect settings.
+    // RESET should restore the complete settings panel to its defaults.
+    if (getMuted()) toggleMute();
+    if (onSoundChange) onSoundChange(getMuted());
     syncToUI();
   });
 
@@ -123,19 +128,28 @@ export function initSettingsUI(opts = {}) {
 
   $('gear').addEventListener('click', openSettings);
   $('set-close').addEventListener('click', closeSettings);
+  $('set-close-top').addEventListener('click', closeSettings);
   // tap the dimmed backdrop (outside the panel) to dismiss
   $('settings').addEventListener('pointerdown', (e) => {
     if (e.target === $('settings')) closeSettings();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isSettingsOpen()) closeSettings();
+  });
 }
 
 export function openSettings() {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   syncToUI();
   $('settings').classList.remove('hidden');
+  $('settings').querySelector('.panel').scrollTop = 0;
+  requestAnimationFrame(() => $('set-close-top').focus({ preventScroll: true }));
 }
 
 export function closeSettings() {
   $('settings').classList.add('hidden');
+  if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+  returnFocus = null;
 }
 
 export function isSettingsOpen() {

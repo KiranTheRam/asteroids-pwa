@@ -231,13 +231,14 @@ export class PlanetField {
 
   _fire(dir) {
     const g = this.g, s = this.ship;
-    if (this.bullets.reduce((n, b) => n + (b.enemy ? 0 : 1), 0) >= PC.maxBullets) return;
+    const playerBullets = this.bullets.reduce((n, b) => n + (b.enemy ? 0 : 1), 0);
+    if (playerBullets >= PC.maxBullets) return;
     this.fireCd = g.pu.rapid > 0 ? CFG.rapidCooldown : this.g.rlFireCooldown;
     const speed = PC.bulletSpeed * (this.g.rlBulletSpeed / CFG.bulletSpeed);
     const dirs = g.pu.spread > 0
-      ? [rotAxis(dir, s.p, -0.22), dir, rotAxis(dir, s.p, 0.22)]
+      ? [dir, rotAxis(dir, s.p, -0.22), rotAxis(dir, s.p, 0.22)]
       : [dir];
-    for (const d of dirs) {
+    for (const d of dirs.slice(0, PC.maxBullets - playerBullets)) {
       this.bullets.push({
         p: [...s.p], v: V.scale(V.norm(tangent(s.p, d)), speed), life: PC.bulletLife,
         ang: PC.bulletAng, pierce: g.pu.pierce > 0, homing: g.pu.homing > 0, enemy: false, color: null,
@@ -419,7 +420,11 @@ export class PlanetField {
     if (this.g.pu.shield > 0) { this._breakShield(); return; }
     this._burst(this.ship.p, null, 28, COLORS.fg, 1.3);
     const dead = this.g.planetDamage();
-    if (!dead) { this.ship.v = [0, 0, 0]; this.ship.invuln = PC.invuln; }
+    if (!dead) {
+      this.ship.v = [0, 0, 0];
+      this.ship.invuln = PC.invuln;
+      if ((this.g.rl?.upgrades?.startShield || 0) >= 1) this.g.pu.shield = 3;
+    }
   }
 
   _destroyAsteroid(a) {

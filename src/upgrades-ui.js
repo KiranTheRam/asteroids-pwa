@@ -3,6 +3,7 @@ import { UPGRADES, COLORS } from './config.js';
 import { getRoguelite, setRoguelite } from './storage.js';
 
 const $ = (id) => document.getElementById(id);
+let returnFocus = null;
 
 function render() {
   const rl = getRoguelite();
@@ -65,19 +66,28 @@ function render() {
 
 export function initUpgradesUI() {
   $('upg-close').addEventListener('click', closeUpgrades);
+  $('upg-close-top').addEventListener('click', closeUpgrades);
   $('upg-open').addEventListener('click', openUpgrades);
   $('upgrades').addEventListener('pointerdown', (e) => {
     if (e.target === $('upgrades')) closeUpgrades();
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isUpgradesOpen()) closeUpgrades();
+  });
 }
 
 export function openUpgrades() {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   render();
   $('upgrades').classList.remove('hidden');
+  $('upgrades').querySelector('.panel').scrollTop = 0;
+  requestAnimationFrame(() => $('upg-close-top').focus({ preventScroll: true }));
 }
 
 export function closeUpgrades() {
   $('upgrades').classList.add('hidden');
+  if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+  returnFocus = null;
 }
 
 export function isUpgradesOpen() {

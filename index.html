@@ -32,7 +32,15 @@
 
   <div id="settings" class="hidden" role="dialog" aria-modal="true" aria-label="Settings">
     <div class="panel">
-      <h1>SETTINGS</h1>
+      <div class="dialog-header">
+        <span class="dialog-header-spacer" aria-hidden="true"></span>
+        <h1>SETTINGS</h1>
+        <button id="set-close-top" class="dialog-close" type="button" aria-label="Close settings">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
 
       <label class="row">
         <span class="lbl">Thruster sensitivity</span>
@@ -225,7 +233,15 @@
 
   <div id="upgrades" class="hidden" role="dialog" aria-modal="true" aria-label="Upgrades">
     <div class="panel">
-      <h1>UPGRADES</h1>
+      <div class="dialog-header">
+        <span class="dialog-header-spacer" aria-hidden="true"></span>
+        <h1>UPGRADES</h1>
+        <button id="upg-close-top" class="dialog-close" type="button" aria-label="Close upgrades">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M5 5l14 14M19 5L5 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
       <div id="upg-minerals-row">
         <span class="upg-minerals-label">Minerals</span>
         <span id="upg-minerals" class="upg-minerals-count">0</span>
