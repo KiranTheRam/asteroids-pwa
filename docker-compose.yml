@@ -1,7 +1,6 @@
 services:
   asteroids:
-    build: .
-    image: asteroids-pwa:latest
+    image: forgejo.ram-home.org/kiran/asteroids-pwa:latest
     container_name: asteroids
     ports:
       # host:container — change the host port (left side) if 8080 is taken

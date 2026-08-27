@@ -75,6 +75,8 @@ export const CFG = {
   ],
   astBaseCount: 4,          // wave 1 large asteroids
   astWrapPad: 64,
+  flatWaveStragglerGrace: 0.75, // max dead air in flat mode before advancing
+  waveStragglerGrace: 3,    // planet mode: grace for backside/non-visible rocks
 
   // UFO
   ufoRadius: 18,

@@ -95,6 +95,7 @@ export class PlanetField {
     this.particles = [];
     this.fireCd = 0;
     this.comboTimer = 0;
+    this.noAsteroidTimer = 0;
     this.hunterTimer = rand(...PC.hunterEvery);
     this.mineTimer = rand(...PC.mineEvery);
     this.sniperTimer = rand(...PC.sniperEvery);
@@ -122,6 +123,7 @@ export class PlanetField {
 
   _startWave(n) {
     this.g.wave = n;
+    this.noAsteroidTimer = 0;
     const count = PC.astBase + (n - 1);
     for (let i = 0; i < count; i++) this._spawnAsteroid(0, this._spawnPoint());
     this.g.waveBanner = 1.6;
@@ -191,10 +193,28 @@ export class PlanetField {
 
     this._collisions();
 
-    if (this.asteroids.length === 0) {
-      g.lives = Math.min(g.maxLives, g.lives + 1); // replenish 1 per wave
-      this._startWave(g.wave + 1);
+    this._advanceWaveIfClear(dt, cam);
+  }
+
+  _advanceWaveIfClear(dt, cam) {
+    this.asteroids = this.asteroids.filter((a) => {
+      return !a.dead
+        && Array.isArray(a.p) && Array.isArray(a.v)
+        && a.p.every(Number.isFinite) && a.v.every(Number.isFinite);
+    });
+
+    const clear = this.asteroids.length === 0;
+    const visible = !clear && this.asteroids.some((a) => V.dot(a.p, cam.zc) > -a.ang);
+
+    if (clear || (!visible && (this.noAsteroidTimer += dt) >= CFG.waveStragglerGrace)) {
+      this.asteroids = [];
+      this.noAsteroidTimer = 0;
+      this.g.lives = Math.min(this.g.maxLives, this.g.lives + 1); // replenish 1 per wave
+      this._startWave(this.g.wave + 1);
+      return;
     }
+
+    if (visible) this.noAsteroidTimer = 0;
   }
 
   _updateShip(dt, cam) {
