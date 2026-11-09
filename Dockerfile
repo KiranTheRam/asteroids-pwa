@@ -1,5 +1,5 @@
 # Asteroids PWA — a zero-build static site served by nginx.
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
 
 # nginx server config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
